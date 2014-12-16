@@ -143,6 +143,15 @@ as its value."
         )
     (list gen kill stck)))
 
+(defmacro pop-and-push (sym stck)
+  `(cons ,sym (cdr ,stck)))
+
+(defmacro pop-twice (stck)
+  `(cdr (cdr stck)))
+
+(defmacro pop-stack (stck)
+  `(cdr ,stck))
+
 (defmacro def-gen-kill (type &key stck vals gen kill)
   `(progn
      (defmethod gen ((op ,type) stack valmap)
@@ -311,19 +320,22 @@ as its value."
 
 (defmacro asgn-gen ()
   `(cond
-    ((eql (first stack) 'not-const) (list (cons (second stack) 'not-const)))
-    ((eql (second stack) 'glob) nil)
-    ((eql (second stack) 'args) nil)
-    ;;((eql (second stack) 'not-const) (error "Bad address -- address is indeterminate and not global?"))
-    ((null (second stack)) nil)
-    ((eql (second stack) 'not-const) nil)
-    (t (list (cons (the integer (second stack)) (first stack))))))
+     ((eql (first stack) 'not-const) (list (cons (second stack) 'not-const)))
+     ((eql (second stack) 'glob) nil)
+     ((eql (second stack) 'args) nil)
+     ;;((eql (second stack) 'not-const) (error "Bad address -- address is indeterminate and not global?"))
+     ((null (second stack)) nil)
+     ((eql (second stack) 'not-const) nil)
+     (t (list (cons (the integer (second stack)) (first stack))))))
+     ;;(t (list (cons (second stack) (first stack))))))
+
 
 (defmacro asgn-kill ()
   `(cond
      ((eql (second stack) 'glob) nil)
      ((eql (second stack) 'args) nil)
      ((null (second stack)) nil)
+     ;;(t (list (cons (second stack) (first stack))))))
      (t (list (cons (the integer (second stack)) (first stack))))))
 
 (def-gen-kill asgnu
@@ -351,6 +363,11 @@ as its value."
             'glob)
            ((eql (car stack) 'args)
             'args)
+           #|((eql (car stack) 'not-const)
+           'not-const)
+           (t (aif (cdr (map-find (car stack) valmap t))
+           it
+           nil))) |#
            (t (cdr (map-find (car stack) valmap))))
          (cdr stack)))
 

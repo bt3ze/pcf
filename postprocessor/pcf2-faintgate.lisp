@@ -122,12 +122,8 @@
                        (rle-set-union (const-gen op (get-block-base blck)) (dep-gen op (get-block-base blck) blck flow-data))))
           (get-block-op-list blck)
           :initial-value (rle-empty-set)))
-;;  (let ((op (get-block-op blck)))
-  ;;  (faint-confluence-op (const-gen op (get-block-base blck)) (dep-gen op (get-block-base blck) blck flow-data)))
- ;; )
 
 (defmethod kill (blck flow-data)
-  ;;(declare (ignore flow-data))
   ;; kill = const-kill union dep_kill
  (reduce (lambda (state op)
            (rle-set-union state
@@ -244,7 +240,6 @@
                      ;; the above segment will remove MUXes that probably should be removed but also gates on conditional wires that should not. that logic should really be somewhere else, not here.
                           
                      (rle-set-from-list (list op1 op2))
-                 ;;(error "input to gate does not have a value"))
                      (rle-empty-set))))
     :const-kill (with-slots (op1 op2 dest) op
                   (with-true-addresses (op1 op2 dest)
@@ -344,10 +339,8 @@
                (with-true-addresses (dest op1)
                  (let ((addr (rle-map-val op1 (get-block-consts blck))))
                    ;; addr should always be defined in consts
-                   ;;(break)
                    (rle-set-union (gen-for-indirection addr dest op2)
-                                  (rle-singleton op1))
-                                  )))
+                                  (rle-singleton op1)))))
     :const-kill (with-slots (dest op2) op
                   (with-true-address dest
                     (kill-for-indirection dest op2)))
@@ -357,33 +350,25 @@
     :dep-gen (with-slots (dest op1 op2) op
                (with-true-addresses (dest op1)
                  (let ((addr (rle-map-val dest (get-block-consts blck))))
-                   ;;(break)
                    ;; addr should always be defined in consts
-                   ;;(gen-for-indirection op1 addr op2)
-                  (rle-set-union (gen-for-indirection op1 addr op2)
-                                 (rle-singleton dest)) ;; this info is important!
-                                  )))
+                   (rle-set-union (gen-for-indirection op1 addr op2)
+                                  (rle-singleton dest)))))
     :dep-kill (with-slots (dest op2) op
                 (with-true-address dest
                   (let ((addr (rle-map-val dest (get-block-consts blck))))
                     ;; addr should always be defined in consts
-                    ;;(break)
                     (kill-for-indirection addr op2))))
     )
 
 (def-gen-kill call
     :const-gen (with-slots (newbase fname) op
                  (with-true-address newbase
-                   ;;(break)
                    (if (or (set-member fname input-functions) 
                            (set-member fname output-functions))
                        (rle-set-from-list (loop for i from (- newbase 32) to (- newbase 1) collect i))
                        (rle-empty-set))))
     :dep-kill (with-slots (newbase fname) op
                 (with-true-address newbase
-                  
-                  #|(if (set-member fname input-functions)
-                      (rle-set-from-list (loop for i from (- newbase 32) to (- newbase 1) collect i))|#
                   (rle-empty-set)))
     )
 
