@@ -146,20 +146,20 @@ as its value."
           (alist->map* it :empty-m empty-s)
           empty-s)))
 
-(defmacro flow-gen-kill (type &key (gen nil) (kill nil) (stck nil))
+(defmacro def-gen-kill (type &key (gen nil) (kill nil) (stck nil))
   `(progn
      (flow-stack ,type ,stck)
      (flow-gen ,type ,gen)
      (flow-kill ,type ,kill)
     ))
 
-(flow-gen-kill lcc-instruction
+(def-gen-kill lcc-instruction
     :stck stack
     :gen nil
     :kill nil
     )
 
-(flow-gen-kill callu
+(def-gen-kill callu
     ;; pop the call address off the stack
     ;; and add 'not-const (usually a safe assumption)
     :stck (pop-and-push 'not-const stack)
@@ -167,7 +167,7 @@ as its value."
     :kill nil
     )
 
-(flow-gen-kill calli
+(def-gen-kill calli
     ;; pop the call address off the stack
     ;; and add 'not-const (usually a safe assumption)
     :stck (pop-and-push 'not-const stack)
@@ -175,19 +175,19 @@ as its value."
     :kill nil
     )
 
-(flow-gen-kill callv
+(def-gen-kill callv
     ;; pop the call address off the stack
     :stck (pop-stack stack)
     :gen nil
     :kill nil
     )
 
-(flow-gen-kill jumpv
+(def-gen-kill jumpv
     ;; pop the jump address off the stack
     :stck (pop-stack stack)
     )
 
-(flow-gen-kill addrgp
+(def-gen-kill addrgp
     ;; address of global 
     ;; look to the glob section
     :stck (push-stack 'glob stack)
@@ -195,15 +195,15 @@ as its value."
     :kill nil
     )
 
-(flow-gen-kill addrfp
+(def-gen-kill addrfp
     ;; address of parameter
     ;; stack gains a pointer to the args
-    :stck (cons 'args stack)
+    :stck (push-stack 'args stack)
     :gen nil
     :kill nil
     )
 
-(flow-gen-kill addrlp
+(def-gen-kill addrlp
     ;; address of a local
     ;; stack gains the address of a specific variable in the flow data
     ;; if the address is offset, this uses a pointer to the base of the array
@@ -227,46 +227,46 @@ as its value."
              stack))
     )
 
-(flow-gen-kill cnstu
+(def-gen-kill cnstu
     :stck (the (cons integer t)
             (cons
              (parse-integer (second (slot-value op 's-args))) stack))
     )
 
-(flow-gen-kill cnsti
+(def-gen-kill cnsti
     :stck (the (cons integer t)
             (cons
              (parse-integer (second (slot-value op 's-args))) stack))
     )
 
-(flow-gen-kill two-arg-instruction
-    :stck (cons 'not-const (cddr stack))
+(def-gen-kill two-arg-instruction
+    :stck (push-stack 'not-const (pop-twice stack))
     )
 
-(flow-gen-kill cmp-jump-instruction
+(def-gen-kill cmp-jump-instruction
     ;; check first two spots on stack,
     ;; push const or not-const depending on their values
     :stck (let ((o1 (first stack))
                 (o2 (second stack)))
             (if (or (eql 'not-const o1)
                     (eql 'not-const o2))
-                (cons 'not-const (cddr stack))
-                (cons 'const (cddr stack)))))
+                (push-stack 'not-const (pop-twice stack))
+                (push-stack 'const (pop-twice stack)))))
 
-(flow-gen-kill argu
-    :stck (cdr stack)
+(def-gen-kill argu
+    :stck (pop-stack stack)
     )
 
-(flow-gen-kill argp
-    :stck (cdr stack)
+(def-gen-kill argp
+    :stck (pop-stack stack)
     )
 
-(flow-gen-kill addp
+(def-gen-kill addp
     ;; pointer addition
     ;; 
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
-            (cons
+            (push-stack
              (cond
                ((or (eql op1 'glob)
                     (eql op2 'glob)) 
@@ -283,28 +283,13 @@ as its value."
                                (t 'glob)))
                     (t 'const))))
                     ;;(t 'glob))))
-             (cddr stack))))
+             (pop-twice stack))))
 
-(flow-gen-kill one-arg-instruction
+(def-gen-kill one-arg-instruction
     :stck (let ((op (first stack)))
             (if (eql 'not-const op)
-                (cons 'not-const (cdr stack))
-                (cons 'const (cdr stack)))))
-
-#|
-(defmacro asgn-vals ()
-  ;; 
-  `(cond
-     ((or (eql (second stack) 'glob)
-          (eql (second stack) 'args)
-          (null (second stack)))
-      valmap)
-     (t (let ((addr (second stack)))
-          ;;(declare (type integer addr))
-          (typecase addr
-            (integer (map-insert addr (first stack) valmap))
-            (t valmap))))))
-|#
+                (pop-and-push 'not-const stack)
+                (pop-and-push 'const stack))))
 
 (defmacro asgn-gen ()
   `(cond
@@ -322,20 +307,19 @@ as its value."
   `(cond
      ((eql (second stack) 'glob) nil)
      ((eql (second stack) 'args) nil)
+;;     ((eql (second stack) 'not-const) nil)
      ((null (second stack)) nil)
      ;;(t (list (cons (second stack) (first stack))))))
      (t (list (cons (the integer (second stack)) (first stack))))))
 
-(flow-gen-kill asgnu
-    :stck (cddr stack)
-;    :vals (asgn-vals)
+(def-gen-kill asgnu
+    :stck (pop-twice stack)
     :gen (asgn-gen)
     :kill (asgn-kill)
     )
 
-(flow-gen-kill asgni
-    :stck (cddr stack)
- ;   :vals (asgn-vals)
+(def-gen-kill asgni
+    :stck (pop-twice stack)
     :gen (asgn-gen)
     :kill (asgn-kill)
     )
@@ -359,157 +343,157 @@ as its value."
            (t (cdr (map-find (car stack) valmap))))
          (cdr stack)))
 
-(flow-gen-kill indiru
+(def-gen-kill indiru
     :stck (indir-stack))
 
-(flow-gen-kill indiri
+(def-gen-kill indiri
     :stck (indir-stack))
 
-(flow-gen-kill indirp
+(def-gen-kill indirp
     ;; this may be buggy -- pointer fetch is not well supported
-    :stck (cons 'glob (cdr stack)))
+    :stck (pop-and-push 'glob stack))
 
 (defmacro arithmetic-shift (fn op1 op2)
   `(if (or (eql op1 'glob)(eql op2 'glob))
-       (cons 'not-const (cddr stack))
-       (cons (typecase ,op1
+       (push-stack 'not-const (pop-twice stack))
+       (push-stack (typecase ,op1
                (integer (typecase ,op2
                           (integer (funcall ,fn ,op1 ,op2))
                           (t 'not-const)))
                (t 'not-const))
-             (cddr stack))))
+             (pop-twice stack))))
 
 (defmacro arithmetic-stack (fn op1 op2)
   `(if (or (eql op1 'glob)(eql op2 'glob))
-       (cons 'not-const (cddr stack))
-       (cons (typecase ,op1
+       (push-stack 'not-const (pop-twice stack))
+       (push-stack (typecase ,op1
                (number (typecase ,op2
                          (number (funcall ,fn ,op1 ,op2))
                          (t 'not-const)))
                (t 'not-const))
-             (cddr stack))))
+             (pop-twice stack))))
 
-(flow-gen-kill lshu
+(def-gen-kill lshu
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
             (arithmetic-shift #'ash op2 op1)
             ))
 
-(flow-gen-kill lshi
+(def-gen-kill lshi
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
             (arithmetic-shift #'ash op2 op1)    
             ))
 
-(flow-gen-kill rshu
+(def-gen-kill rshu
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
            (arithmetic-shift #'ash op2 (aif (numberp op1) (* -1 op1) 'not-const))
            ))
 
-(flow-gen-kill rshi
+(def-gen-kill rshi
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
             (arithmetic-shift #'ash op2 (aif (numberp op1) (* -1 op1) 'not-const))
             ))
 
-(flow-gen-kill addu
+(def-gen-kill addu
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
            (arithmetic-stack #'+ op1 op2)
            ))
 
-(flow-gen-kill addi
+(def-gen-kill addi
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'+ op1 op2)
            ))
 
-(flow-gen-kill subu
+(def-gen-kill subu
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'- op2 op1)
            ))
 
-(flow-gen-kill subi
+(def-gen-kill subi
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'- op2 op1)
     ))
 
-(flow-gen-kill mulu
+(def-gen-kill mulu
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
             (arithmetic-stack #'* op2 op1)   
   ))
 
-(flow-gen-kill muli
+(def-gen-kill muli
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
             (arithmetic-stack #'* op2 op1)
             ))
 
-(flow-gen-kill divu
+(def-gen-kill divu
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
             (arithmetic-stack #'/ op2 op1) 
             ))
 
-(flow-gen-kill divi
+(def-gen-kill divi
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'/ op2 op1)
     ))
 
-(flow-gen-kill modu
+(def-gen-kill modu
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'mod op2 op1)
            ))
 
-(flow-gen-kill modi
+(def-gen-kill modi
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'mod op2 op1)
     ))
 
-(flow-gen-kill boru
+(def-gen-kill boru
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'logior op2 op1)
     ))
 
-(flow-gen-kill bori
+(def-gen-kill bori
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'logior op2 op1)
 ))
 
-(flow-gen-kill bandu
+(def-gen-kill bandu
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'logand op2 op1)
 ))
 
-(flow-gen-kill bandi
+(def-gen-kill bandi
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
            (arithmetic-stack #'logand op2 op1)
   ))
 
-(flow-gen-kill bxoru
+(def-gen-kill bxoru
     :stck (let ((op1 (first stack))
                (op2 (second stack)))
            (arithmetic-stack #'logxor op2 op1)
  ))
 
-(flow-gen-kill bxori
+(def-gen-kill bxori
     :stck (let ((op1 (first stack))
                 (op2 (second stack)))
             (arithmetic-stack #'logxor op2 op1)
     ))
 
-(flow-gen-kill bcomu
+(def-gen-kill bcomu
     :stck (let ((o1 (first stack)))
             (if (or (eql o1 'glob) (eql o1 'args))
                 (cons 'not-const (cdr stack))
@@ -521,25 +505,25 @@ as its value."
                  (cdr stack))))
     )
 
-(flow-gen-kill bcomi
+(def-gen-kill bcomi
     :stck (let ((o1 (first stack)))
             (if (or (eql o1 'glob) (eql o1 'args))
-                (cons 'not-const (cdr stack))
-                (cons
+                (pop-and-push 'not-const stack)
+                (pop-and-push
                  (typecase o1
                    (integer (lognot o1))
                    (symbol 'not-const)
                    (t (error "unknown item on stack")))
-                 (cdr stack))))
+                 stack)))
     )
 
-(flow-gen-kill negi
+(def-gen-kill negi
     :stck (let ((o1 (first stack)))
             (if (or (eql o1 'glob) (eql o1 'args))
-                (cons 'not-const (cdr stack))
-                (cons
+                (pop-and-push 'not-const stack)
+                (pop-and-push
                  (typecase o1
                    (number (* -1 o1))
                    (symbol 'not-const))
-                 (cdr stack))))
+                 stack)))
     )
