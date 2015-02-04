@@ -67,7 +67,8 @@ as its value."
     (setmap:map-map (lambda (k v)
                       (declare (ignore k))
                       (multiple-value-bind (in-set in-stack) 
-                          (lcc-dataflow:flow-forwards #'lcc-const-join-fn #'lcc-const:lcc-const-flow-fn
+                          (lcc-dataflow:flow-forwards #'lcc-const-join-fn 
+                                                      #'lcc-const:lcc-const-flow-fn
                                                       (lcc-dataflow:make-cfg-single-ops v) ;; cfg
                                                       (setmap:map-empty :comp #'<) ;; in-sets
                                                       (setmap:map-empty :comp #'<) ;; in-stacks
@@ -85,12 +86,28 @@ as its value."
   )
 
 (defun lcc-const-flow-fn (in-set in-stack bb )
+  ;; returns a list: (new stack, (gen U (in-set - kill)))
   (declare (optimize (debug 3)(speed 0)))
   (let ((genkill (get-gen-kill bb in-stack in-set)))
     (list (third genkill) ;; new stack
           (set-union (first genkill) ;; new value set
                      (set-diff in-set
                                (second genkill))))))
+#|
+(defun lcc-const-flow-fn* (in-set in-stack bb)
+  (declare (optimize (debug 3)(speed 0)))
+  (let ((stack (get-stack bb in-set in-stack))
+        (gen (get-gen bb in-set in-stack))
+        (kill (get-kill bb in-set in-stack)))
+    (list (stack (set-union gen (set-diff in-set kill))))))
+|#
+
+(defmacro reduce-over-bb-ops (bb)
+  `(reduce (lambda (&optional x y)
+             (set-union (aif x x empty-s) 
+                        (alist->map* y :empty-m empty-s)))
+           (basic-block-ops ,bb)
+           :initial-value empty-s))
 
 (defun get-gen-kill (bb instack valmap)
   "Get the gen and kill sets for a basic block"
@@ -105,9 +122,9 @@ as its value."
                                      empty-s)
                                 (alist->map* y :empty-m empty-s)))
                  (car (reduce #'(lambda (st x)
-                                  (let ((valmap (third st))
+                                  (let ((lsts (first st))
                                         (stack (second st))
-                                        (lsts (first st)))
+                                        (valmap (third st)))
                                     (let ((val (gen x stack valmap)))
                                       (cons (cons (car val) lsts)
                                             (cdr val)))))
@@ -121,9 +138,9 @@ as its value."
                                      empty-s)
                                 (alist->map* y :empty-m empty-s)))
                  (car (reduce #'(lambda (st x)
-                                  (let ((stack (second st))
-                                        (valmap (third st))
-                                        (lsts (first st)))
+                                  (let ((lsts (first st))
+                                        (stack (second st))
+                                        (valmap (third st)))
                                     (let ((val (kill x stack valmap)))
                                       (cons (cons (car val) lsts)
                                             (cdr val)))))
@@ -132,8 +149,8 @@ as its value."
                  :initial-value empty-s))
         (stck (second (reduce #'(lambda (st x)
                                   (declare (optimize (debug 3)(speed 0)))
-                                  (let ((stack (second st))
-                                        (lsts (first st))
+                                  (let ((lsts (first st))
+                                        (stack (second st))
                                         (valmap (third st)))
                                     (let ((val (kill x stack valmap)))
                                       (cons (cons (car val) lsts)
@@ -147,25 +164,33 @@ as its value."
   `(cons ,sym (cdr ,stck)))
 
 (defmacro pop-twice (stck)
-  `(cdr (cdr stck)))
+  `(cdr (cdr ,stck)))
 
 (defmacro pop-stack (stck)
   `(cdr ,stck))
 
+(defmacro list-list-avlset (var stck vals valmap)
+  `(the (cons list (cons list (cons avl-set t)))
+        (list ,var ,stck
+              (aif ,vals it ,valmap))))
+
 (defmacro def-gen-kill (type &key stck vals gen kill)
   `(progn
      (defmethod gen ((op ,type) stack valmap)
-       (the (cons list (cons list (cons avl-set t)))
-            (list ,gen ,stck 
-                  (aif ,vals
-                       it
-                       valmap))))
-     (defmethod kill ((op ,type) stack valmap )
-       (the (cons list (cons list (cons avl-set t)))
+       (list-list-avlset ,gen ,stck ,vals valmap))
+       ;;(the (cons list (cons list (cons avl-set t)))
+       ;;     (list ,gen ,stck 
+       ;;           (aif ,vals
+       ;;                it
+       ;;                valmap))))
+     (defmethod kill ((op ,type) stack valmap)
+       (list-list-avlset ,kill ,stck ,vals valmap))))
+#|       (the (cons list (cons list (cons avl-set t)))
             (list ,kill ,stck 
                   (aif ,vals
                        it
                        valmap))))))
+|#
 
 (def-gen-kill lcc-instruction
     :stck stack
