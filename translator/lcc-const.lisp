@@ -523,7 +523,7 @@ as its value."
 
 (def-gen-kill bcomu
     :stck (let ((o1 (first stack)))
-            (if (eql o1 'glob)
+            (if (or (eql o1 'glob) (eql o1 'args))
                 (cons 'not-const (cdr stack))
                 (cons
                  (typecase o1
@@ -535,7 +535,7 @@ as its value."
 
 (def-gen-kill bcomi
     :stck (let ((o1 (first stack)))
-            (if (eql o1 'glob)
+            (if (or (eql o1 'glob) (eql o1 'args))
                 (cons 'not-const (cdr stack))
                 (cons
                  (typecase o1
@@ -547,7 +547,7 @@ as its value."
 
 (def-gen-kill negi
     :stck (let ((o1 (first stack)))
-            (if (eql o1 'glob)
+            (if (or (eql o1 'glob) (eql o1 'args))
                 (cons 'not-const (cdr stack))
                 (cons
                  (typecase o1
