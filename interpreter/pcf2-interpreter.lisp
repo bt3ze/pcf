@@ -14,6 +14,7 @@
 (in-package :pcf2-interpreter)
 
 (defparameter *debug-output* nil)
+;;;(defparameter *error-output* nil)
 
 (defstruct (pcf2-state
              (:print-function
@@ -199,13 +200,9 @@ The functions that operate on pcf2-state objects should treat these objects as i
                              (format str "Value at position ~D is ~A, which is not a bit!"
                                      ,idxsym
                                      val)
-                             str
-                             )
-                           )
-                    )
-                (format *error-output* "~&Setting state value ~D to ~A~%" ,idx ,val)
-                )
-            )
+                             str)))
+                (if *debug-output*
+                    (format *error-output* "~&Setting state value ~D to ~A~%" ,idx ,val))))
        (let ((newstate (make-pcf2-state :baseptr (pcf2-state-baseptr st)
                                         :iptr (pcf2-state-iptr st)
                                         :lbls (pcf2-state-lbls st)
@@ -419,7 +416,8 @@ The functions that operate on pcf2-state objects should treat these objects as i
     (let ((newbase (+ newbase (pcf2-state-baseptr state)))
           )
       (check-mux-cnd)
-      (format *error-output* "~&Function ~A, new base: ~A~%" fname newbase)
+      (if *debug-output*
+          (format *error-output* "~&Function ~A, new base: ~A~%" fname newbase))
       (cond
         ((or (string-equal fname "alice")
              (string-equal fname "bob"))
@@ -434,7 +432,8 @@ The functions that operate on pcf2-state objects should treat these objects as i
                                   )
                  )
                )
-           (format t "~&Getting input ~A for ~A~%" input-pos fname)
+           (if *debug-output*
+               (format *error-output* "~&Getting input ~A for ~A~%" input-pos fname))
            (let ((state (reduce
                          #'(lambda (st x)
                              (set-state-val st (+ newbase x) (get-party-input state (+ input-pos x) fname))
@@ -443,7 +442,8 @@ The functions that operate on pcf2-state objects should treat these objects as i
                          :initial-value state)
                    )
                  )
-             (format t "~&Input ~A for ~A: ~A~%" input-pos fname (loop for i from 0 to 31 collect (get-state-val state (+ newbase i))))
+             (if *debug-output*
+                 (format *error-output* "~&Input ~A for ~A: ~A~%" input-pos fname (loop for i from 0 to 31 collect (get-state-val state (+ newbase i)))))
              state
              )
            )

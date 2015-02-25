@@ -120,8 +120,7 @@
     (declare (type addrgp adrop))
     (with-slots (s-args) adrop
       (let ((targ (first s-args))
-            (blkidx idx)
-            )
+            (blkidx idx))
         (add-succ blkidx curblock blkid
           (list (map-insert blkid curblock blocks) new-block blkidx (1+ idx) targs)))))
   )
@@ -177,16 +176,14 @@ of basic block IDs to basic blocks."
                                         (with-slots (s-args) op
                                           (let ((str (first s-args)))
                                             (list (map-insert str idx mp) (1+ idx)))))
-                                       (otherwise (list mp (1+ idx)))))
-                                   )
+                                       (otherwise (list mp (1+ idx))))))
                                ops
                                :initial-value (list (map-empty :comp #'string<) 0))))
         (cfg (reduce #'(lambda (x y)
                          (declare (optimize (debug 3) (speed 0))
                                   (type lcc-instruction y)
                                   (type list x))
-                         (apply #'find-basic-blocks (cons y x))
-                         )
+                         (apply #'find-basic-blocks (cons y x)))
                      ops :initial-value (list (map-empty :comp #'<)
                                               (make-basic-block)
                                               -1
@@ -281,7 +278,8 @@ of basic block IDs to basic blocks."
                (if (or (null cblock) (null (basic-block-id cblock)))
                    (list in-sets in-stacks done)
                    (let ((new-out (reduce (lambda (state pred)
-                                            (print pred)
+                                            (format t "~A " (basic-block-id cblock))
+                                            (format t "~A ~%" (basic-block-ops cblock)) 
                                             (let ((res (funcall flow-fn 
                                                                 (aif (map-find pred in-sets t)
                                                                      (cdr it)

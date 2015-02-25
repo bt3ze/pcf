@@ -95,6 +95,7 @@ as its value."
           (kill (get-kill op in-stack)))
       (list stack (set-union gen (set-diff in-set kill))))))
 
+;; some abtractions for manipulating the stack
 (defmacro pop-and-push (sym stck)
   `(cons ,sym (cdr ,stck)))
 
@@ -107,23 +108,13 @@ as its value."
 (defmacro push-stack (val stck)
   `(cons ,val ,stck))
 
+;; generic functions
 (defgeneric get-stack (op stack valmap)
   (:documentation "get the state of the stack after flowing over an op"))
 (defgeneric get-gen (op stack)
   (:documentation "get the gen set produced by flowing over an op"))
 (defgeneric get-kill (op stack)
   (:documentation "get the kill set produced by flowing over an op"))
-;;; (defgeneric get-vals (bb)
-;;;  (:documentation "get the state of the value map after flowing over a basic block")
-
-#|
-(defmacro flow-vals (type &body body)
-  `(defmethod get-vals ((bb ,type))
-     (declare (optimize (debug 3)(speed 0)))
-     (aif (locally ,@body)
-          it
-          nil)))
-|#
 
 (defmacro flow-stack (type &body body)
   `(defmethod get-stack ((op ,type) stack valmap)
@@ -132,6 +123,8 @@ as its value."
           it
           nil)))
 
+;; note that since the macros defined below will leave us with associative lists,
+;; it is necessary to convert them to maps at this step
 (defmacro flow-gen (type &body body)
   `(defmethod get-gen ((op ,type) stack)
      (declare (optimize (debug 3)(speed 0)))
@@ -145,6 +138,7 @@ as its value."
      (aif (locally ,@body)
           (alist->map* it :empty-m empty-s)
           empty-s)))
+
 
 (defmacro def-gen-kill (type &key (gen nil) (kill nil) (stck nil))
   `(progn
@@ -281,7 +275,8 @@ as its value."
                     (integer (typecase op2
                                (integer (+ op1 op2))
                                (t 'glob)))
-                    (t 'const))))
+                    (t (error "integer add with unknown pointer")))))
+                    ;;(t 'const))))
                     ;;(t 'glob))))
              (pop-twice stack))))
 
@@ -297,7 +292,8 @@ as its value."
      ((eql (second stack) 'glob) nil)
      ((eql (second stack) 'args) nil)
      ;;((eql (second stack) 'not-const) (error "Bad address -- address is indeterminate and not global?"))
-     ((null (second stack)) nil)
+     ;;((null (second stack)) nil)
+     ((null (second stack )) (error "not enough items on stack for assignment"))
      ((eql (second stack) 'not-const) nil)
      (t (list (cons (the integer (second stack)) (first stack))))))
      ;;(t (list (cons (second stack) (first stack))))))
@@ -308,7 +304,8 @@ as its value."
      ((eql (second stack) 'glob) nil)
      ((eql (second stack) 'args) nil)
 ;;     ((eql (second stack) 'not-const) nil)
-     ((null (second stack)) nil)
+     ;;((null (second stack)) nil)
+     ((null (second stack )) (error "not enough items on stack for assignment"))
      ;;(t (list (cons (second stack) (first stack))))))
      (t (list (cons (the integer (second stack)) (first stack))))))
 
