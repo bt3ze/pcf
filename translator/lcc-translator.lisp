@@ -1384,7 +1384,7 @@ number of arguments."
 					  )
 					 (let ((shifted-value ,cnst-shift))
 					   (assert (= (length shifted-value) width))
-					   (loop for i in (reverse shifted-value) for j in (reverse rwires*) collect ; why reverse both here?
+					   (loop for i in shifted-value for j in rwires* collect ; why reverse both here?
 						(make-instance 'copy :dest j :op1 i :op2 1))))
 			      (push-stack stack width rwires*
 				,@body)))))))))))))))
@@ -1397,6 +1397,7 @@ number of arguments."
        )
       (append
        (loop for i from 0 to (1- y) collect zro)
+       ;;(subseq rwires y width)
        (subseq rwires 0 (- width y))
        )
     (close-instr)
@@ -1411,7 +1412,8 @@ number of arguments."
        )
       (append
        (loop for i from 0 to (1- y) collect zro)
-       (subseq rwires y width)
+       ;;(subseq rwires y width)
+       (subseq rwires 0 (- width y))
        )
     (close-instr)
     )
@@ -1424,7 +1426,7 @@ number of arguments."
        (loop for i from 0 to (1- (expt 2 y)) collect zro)
        )
       (append
-       (subseq rwires 0 (- width y))
+       (subseq rwires y width)
        (loop for i from 0 to (1- y) collect zro)
        )
     (close-instr)
@@ -1439,7 +1441,7 @@ number of arguments."
        )
       (append
        (subseq rwires y width)
-       (loop for i from 0 to (1- y) collect zro)
+       (loop for i from 0 to (1- y) collect (car (last val)))
        )
     (close-instr)
     )
