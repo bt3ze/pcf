@@ -134,7 +134,7 @@ to some extent."
                                                                            )) (make-queue))
                               nil 0 0 nil 1 nil 0 (cons cnsts nil)))))
       (assert (>= (ninth rvl) 1))
-      (format *error-output* "~&Initial base pointer: ~D~%" (ninth rvl))
+      ;(format *error-output* "~&Initial base pointer: ~D~%" (ninth rvl))
       (cons
        (cons (make-instance 'label :str "pcfentry")
              (cons (make-instance 'initbase :base (ninth rvl)) 
@@ -393,7 +393,7 @@ number of arguments."
     for this, but for some reason that is not working....~%"
             )
     `(let ((,cnstsym (cadr (cdr (map-find iidx (cadr (cdr cnsts)))))))
-       (format *error-output* "asgn-mux: ~A, iidx: ~D~%" ,cnstsym iidx)
+       ;(format *error-output* "asgn-mux: ~A, iidx: ~D~%" ,cnstsym iidx)
        (if (and (or (queue-emptyp targets)
                     (string= (branch-target-label (peek-queue targets)) "$$$END$$$"))
                 ; TODO: Fix this
