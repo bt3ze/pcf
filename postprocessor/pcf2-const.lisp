@@ -16,7 +16,7 @@
 ;;; f_n(x) = (x-Kill_n(x) Union Gen_n
 
 ;;; Constant propagation is a forward data flow problem
-;;; we represent the constants available at a program point as a map from wire index  to constant. if the variable is not a constant, we exclude it from the map (this is a memory consideration)
+;;; we represent the constants available at a program point as a map from wire index  to constant. if the variable is not a constant, we call it 'pcf-not-const
 ;;; the confluence operation is defined in terms of applying conf-hat on pairs of the same variable
 ;; ForAll x1,x2 e L, x1 conf x2 = { <z, dx conf-hat dy > | <z,dx> e x1, <z,dy> e x2, x e Var }
 ;; our analysis will merge maps of constant values by taking all of the key-value pairs that are common to both maps and all of the key-value pairs for which the keys are unique to one map. Pairs from two maps with the same key but different values will be discarded.

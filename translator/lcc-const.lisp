@@ -23,13 +23,29 @@
   (typecase x
     (number (typecase y
               (number (< x y))
-              (symbol (if (equalp y 'glob)
-                          t
+              (symbol (if (or (equalp y 'glob)
+                              (equalp y 'not-const)
+                              (equalp y 'args))
+                          t ;; all symbols less than numbers
                           nil))))
-    (symbol (if (equalp x 'glob)
-                nil
-                t))))
-
+    ;; args < glob < not-const < numbers
+    (symbol (typecase y 
+              (number nil)
+              (symbol
+               (case x
+                 ('glob (case y
+                          ('args t)
+                          ('glob nil)
+                          ('not-const nil)))
+                 ('not-const (case y
+                               ('args nil)
+                               ('glob nil)
+                               ('not-const nil)))
+                 ('args (case y
+                          ('args nil)
+                          ('glob t)
+                          ('not-const t)))
+                 ))))))
 
 (defun lcc-const-join-fn (x y)
   "Compute the join operation on the constant propagation lattice."
@@ -307,7 +323,12 @@ as its value."
      ;;((null (second stack)) nil)
      ((null (second stack )) (error "not enough items on stack for assignment"))
      ;;(t (list (cons (second stack) (first stack))))))
-     (t (list (cons (the integer (second stack)) (first stack))))))
+     (t 
+      (if (not (integerp (second stack)))
+         nil ;; added 2-11-16
+         (list (cons (the integer (second stack)) (first stack)))))
+     )
+  )
 
 (def-gen-kill asgnu
     :stck (pop-twice stack)
@@ -332,12 +353,12 @@ as its value."
             'glob)
            ((eql (car stack) 'args)
             'args)
-           #|((eql (car stack) 'not-const)
+           ((eql (car stack) 'not-const)
            'not-const)
            (t (aif (cdr (map-find (car stack) valmap t))
            it
-           nil))) |#
-           (t (cdr (map-find (car stack) valmap))))
+           nil)))
+         ;(t (cdr (map-find (car stack) valmap))))
          (cdr stack)))
 
 (def-gen-kill indiru

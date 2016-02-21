@@ -1,4 +1,4 @@
-;;; this iterates through a control-flow graph to perform faint-variable analysis. it is adapted from Data Flow Analysis: Theory and Practice by Khedker, Sanyal, and Karkare
+;;; this iterates through a control-flow graph to perform live-variable analysis. it is adapted from Data Flow Analysis: Theory and Practice by Khedker, Sanyal, and Karkare
 ;;; author: bt3ze@virginia.edu
 (defpackage :pcf2-live
   (:use :common-lisp :pcf2-bc :setmap :setmap-rle :utils :pcf2-block-graph :pcf2-flow-utils)

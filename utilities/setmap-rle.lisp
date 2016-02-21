@@ -228,7 +228,7 @@
   ;; set1 should be the smaller one, since we reduce over it
   ;; (second argument)
   (declare (type rle-avl-set set1 set2)
-           ;;(optimize (debug 3)(speed 0))
+           (optimize (debug 3)(speed 0))
            )
   (assert (equalp (rle-avl-set-comp set1) (rle-avl-set-comp set2)))
   (let ((comp (rle-avl-set-comp set1)))

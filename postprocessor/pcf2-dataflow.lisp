@@ -278,6 +278,7 @@
   (let ((new-flow (funcall flow-fn cur-node cfg use-map)))
     (insert-block (get-block-id cur-node) (funcall set-data-fn new-flow cur-node) cfg
       (let ((vals (reduce (lambda (state neighbor-id)
+                            (declare (optimize (debug 3)(speed 0)))
                             (let* ((cfg (first state))
                                    (worklist (second state))
                                    (neighbor-flow (funcall get-data-fn (get-block-by-id neighbor-id cfg)))

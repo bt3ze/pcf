@@ -1913,7 +1913,7 @@ number of arguments."
 
 (definstr labelv ; label definition (void)
   (declare (optimize (debug 3) (speed 0)))
-;  (format t "~&labelv Targets: ~A~%" targets) 
+  (format t "~&labelv Targets: ~A~%" targets) 
 ;  (let ((not-empty (not (queue-emptyp targets)))
 ;        )
   (with-slots (s-args) op

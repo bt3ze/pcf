@@ -293,6 +293,10 @@
   (declare (optimize (debug 3)(speed 0)))
   (let ((comp (avl-set-comp mp))
         )
+    (if (not (integerp x))
+        (break)
+        
+        )
     (multiple-value-bind (found value) (avl-tree-search (cons x nil)
                                                         (avl-set-tree mp) 
                                                         :comp comp)
